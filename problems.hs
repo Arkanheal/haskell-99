@@ -1,5 +1,4 @@
 import Data.List
-import Language.Haskell.TH (clause)
 
 myLast :: [a] -> a
 myLast [] = error "Une liste vide n'a pas de dernier element"
@@ -106,3 +105,17 @@ encodeDirect = map encodeHelper . encode2'
  where
   encodeHelper (1, x) = Single x
   encodeHelper (n, x) = Multiple n x
+
+dupli :: [a] -> [a]
+dupli [] = []
+dupli (x:xs) = replicate 2 x ++ dupli xs
+
+repli :: [a] -> Int -> [a]
+repli [] _ = []
+-- concatMap better
+-- i.e.: concatMap (replicate lgt) x (with x beeing the list)
+repli (x:xs) lgt = replicate lgt x ++ repli xs lgt
+
+dropEvery :: [a] -> Int -> [a]
+dropEvery [] _ = []
+dropEvery x idx = (take (idx-1) x) ++ dropEvery (drop idx x) idx
