@@ -1,4 +1,6 @@
 import Data.List
+import Language.Haskell.TH (clause)
+
 myLast :: [a] -> a
 myLast [] = error "Une liste vide n'a pas de dernier element"
 myLast [x] = x
@@ -47,13 +49,60 @@ compress x = x
 -- Takeaway: read std (Prelude)
 pack :: (Eq a) => [a] -> [[a]]
 pack [] = []
-pack (x:xs) = let (first, rest) = span (==x) xs
-              in (x:first) : pack rest
+pack (x : xs) =
+  let (first, rest) = span (== x) xs
+   in (x : first) : pack rest
 
 encode :: (Eq a) => [a] -> [(Int, a)]
-encode x = let packed = pack x
-           in map (\(y:ys) -> (length ys + 1, y)) packed
+encode x =
+  let packed = pack x
+   in map (\(y : ys) -> (length ys + 1, y)) packed
 
 -- Their version
 encode' :: (Eq a) => [a] -> [(Int, a)]
 encode' x = map (\y -> (length y, head y)) (group x)
+
+data ListItem a = Single a | Multiple Int a
+  deriving (Show)
+
+encodeModified :: (Eq a) => [a] -> [ListItem a]
+encodeModified x = map toListMap $ encode' x
+ where
+  -- pattern match instead of if
+  -- toListMap (1, n) = Single n
+  -- toListMap (x, x) = Multiple x n
+  toListMap (lgt, item) =
+    if lgt == 1
+      then Single item
+      else Multiple lgt item
+
+decodeModified :: [ListItem a] -> [a]
+-- can use concatMap with a where clause
+-- decodeModified = concatMap decodeHelper
+-- where
+-- decodeModified (Single x) = [x]
+-- decodeModified (Multiple n x) = replicate n x
+decodeModified (Single x : xs) = x : decodeModified xs
+decodeModified (Multiple lgt item : xs) = replicate lgt item ++ decodeModified xs
+
+-- Their solution (didn't get the instructions right cos I'm dumb dumb)
+-- `foldr func acc y` => func y acc (cos why tf not)
+-- [1,2,2,3]
+-- acc = []
+-- 3 [] => [(1, 3)]
+-- 2 [(1, 3)] => [(1, 2), (1, 3)]
+-- 2 [(1, 2), (1, 3)] => [(2, 2), (1, 3)]
+-- 1 [(2, 2), (1, 3)] => [(1, 1), (2, 2), (1, 3)]
+encode2' :: Eq a => [a] -> [(Int, a)]
+encode2' = foldr helper []
+ where
+  helper x [] = [(1, x)]
+  helper x (y@(a, b) : ys)
+    | x == b = (1 + a, x) : ys
+    | otherwise = (1, x) : y : ys
+
+encodeDirect :: Eq a => [a] -> [ListItem a]
+encodeDirect = map encodeHelper . encode2'
+ where
+  encodeHelper (1, x) = Single x
+  encodeHelper (n, x) = Multiple n x
