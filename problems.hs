@@ -66,14 +66,14 @@ data ListItem a = Single a | Multiple Int a
 
 encodeModified :: (Eq a) => [a] -> [ListItem a]
 encodeModified x = map toListMap $ encode' x
- where
-  -- pattern match instead of if
-  -- toListMap (1, n) = Single n
-  -- toListMap (x, x) = Multiple x n
-  toListMap (lgt, item) =
-    if lgt == 1
-      then Single item
-      else Multiple lgt item
+  where
+    -- pattern match instead of if
+    -- toListMap (1, n) = Single n
+    -- toListMap (x, x) = Multiple x n
+    toListMap (lgt, item) =
+      if lgt == 1
+        then Single item
+        else Multiple lgt item
 
 decodeModified :: [ListItem a] -> [a]
 -- can use concatMap with a where clause
@@ -94,28 +94,47 @@ decodeModified (Multiple lgt item : xs) = replicate lgt item ++ decodeModified x
 -- 1 [(2, 2), (1, 3)] => [(1, 1), (2, 2), (1, 3)]
 encode2' :: Eq a => [a] -> [(Int, a)]
 encode2' = foldr helper []
- where
-  helper x [] = [(1, x)]
-  helper x (y@(a, b) : ys)
-    | x == b = (1 + a, x) : ys
-    | otherwise = (1, x) : y : ys
+  where
+    helper x [] = [(1, x)]
+    helper x (y@(a, b) : ys)
+      | x == b = (1 + a, x) : ys
+      | otherwise = (1, x) : y : ys
 
 encodeDirect :: Eq a => [a] -> [ListItem a]
 encodeDirect = map encodeHelper . encode2'
- where
-  encodeHelper (1, x) = Single x
-  encodeHelper (n, x) = Multiple n x
+  where
+    encodeHelper (1, x) = Single x
+    encodeHelper (n, x) = Multiple n x
 
 dupli :: [a] -> [a]
-dupli [] = []
-dupli (x:xs) = replicate 2 x ++ dupli xs
+dupli = concatMap (replicate 2)
 
 repli :: [a] -> Int -> [a]
 repli [] _ = []
 -- concatMap better
 -- i.e.: concatMap (replicate lgt) x (with x beeing the list)
-repli (x:xs) lgt = replicate lgt x ++ repli xs lgt
+repli (x : xs) lgt = replicate lgt x ++ repli xs lgt
 
 dropEvery :: [a] -> Int -> [a]
 dropEvery [] _ = []
-dropEvery x idx = (take (idx-1) x) ++ dropEvery (drop idx x) idx
+dropEvery x idx = take (idx - 1) x ++ dropEvery (drop idx x) idx
+
+split :: [a] -> Int -> ([a], [a])
+split (x : xt) n | n > 0 = let (f, l) = split xt (n - 1) in (x : f, l)
+-- if n >= 0 we send the list in the second part, same as splitAt
+split xs _ = ([], xs)
+
+-- [1,2,3,4,5] 2 4 => [2,3,4]
+slice :: [a] -> Int -> Int -> [a]
+slice xs i k = take (k - i + 1) $ drop (i - 1) xs
+
+-- [1,2,3,4,5] -2 => [4,5,1,2,3]
+rotate :: [a] -> Int -> [a]
+rotate xs n
+  | n >= 0 = drop n xs ++ take n xs
+  | n < 0 =
+      let idx = n + length xs
+       in drop idx xs ++ take idx xs
+
+removeAt :: Int -> [a] -> (a, [a])
+removeAt n xs = let (y:yt) = drop (n-1) xs in (y, take (n-1) xs ++ yt)
